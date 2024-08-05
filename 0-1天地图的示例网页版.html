@@ -1,0 +1,302 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <style>
+		html,body{
+			width: 100%;
+			height: 100%;
+			margin: 0px;
+		}
+		.map{
+			height: 100%;
+			width: 100%;
+			float: left;
+		}
+		.contextmenu {
+			display:none;
+			position: absolute;
+			padding: 5px 0;
+			z-index: 9;
+			background-color: yellowgreen;
+			width: 80px;
+			border-radius: 4px;
+		}
+
+        .contextmenu ul {
+			margin:2px;
+            padding: 0;
+            list-style: none;
+        }
+
+        .contextmenu > ul > li {
+            text-align: center;
+            padding: 5px;
+        }
+
+		.contextmenu > ul > li:hover {
+			cursor:pointer;
+			background-color: rgba(0, 0, 255, 0.3);
+		}
+		.newui{
+			display:none;
+		}
+		.featureul{
+			display:none;
+		}
+    </style>
+    <title>OpenLayers example</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol-ext@latest/dist/ol-ext.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-ext@latest/dist/ol-ext.min.js"></script>
+  </head>
+  <body>
+  	 <!--右键操作按钮-->
+	<div id="contextmenu_container" class="contextmenu">
+		<ul id="new" class="newul">
+			<li onclick="formNew()">新增</li>
+		</ul>
+		<ul id="feature" class="featureul">
+			<li class="feature" onclick="formView()">查看</li>
+			<li class="feature" onclick="formEdit()">编辑</li>
+			<li class="feature" onclick="formDelete()">删除</li>
+		</ul>
+	</div>
+    <div id="map" class="map"></div>
+    <script type="text/javascript">
+	
+		//参数定义
+		//点击点坐标
+		var pointcoordinate=[];
+		//点击点feature
+		var clickedfeature={};
+		//feature集合
+		var features=[];
+		//feature集合图层
+		var dataSource = new ol.source.Vector({
+			features: null,
+		});
+		
+		//底图加载
+
+		//坐标参考系
+        var projection = ol.proj.get("EPSG:900913"); 
+		var extent = projection.getExtent(); 
+		var size=ol.extent.getWidth(extent) / 256; 
+		var resolutions = new Array(19);
+		var matrixIds = new Array(19); 
+		for (let z = 0; z < 19; ++z) {
+			resolutions[z] = size / Math.pow(2, z); 
+		  	matrixIds[z] = z;
+		} 
+		var tileGrid = new ol.tilegrid.WMTS({ 
+		   origin: ol.extent.getTopLeft(extent),
+		   resolutions: resolutions, 
+		   matrixIds: matrixIds, 
+		}); 
+		var source=new ol.source.XYZ({
+			//url: "http://t0.tianditu.com/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=172d76ed8e929f9ae07f8a98e989fd95",
+			url:"http://t0.tianditu.gov.cn/img_w/wmts?" +
+				"SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles" +
+				"&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=b0e8f957a1c5a8794a3f74e2ed5e502a",
+			//url:"http://t7.tianditu.gov.cn/vec_c/wmts?service=WMTS&request=GetTile&version=1.0.0&LAYER=vec&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles",
+			extent:[30, 0, 180, 90],
+			wrapX: true
+		}) 
+
+		
+		var maplayer = new ol.layer.Tile({
+		  source: source
+		})
+		var center=ol.proj.transform([106.53097, 29.55743], 'EPSG:4326', 'EPSG:3857')
+        //地图容器
+        var map = new ol.Map({
+            target: 'map',
+            layers: [maplayer],
+            view: new ol.View({
+                center: [106.53097, 29.55743],
+				 projection: 'EPSG:4326',
+				                //地图初始显示级别
+                zoom: 11
+            })
+        });
+		//搜索控件
+		var searchCtrl=new ol.control.SearchFeature({
+			source:null,
+			property:"Label",
+			placeholder:"搜索"
+		})
+		searchCtrl.on('select',function(e){
+			selectCtrl.getFeatures().clear(); 
+            selectCtrl.getFeatures().push(e.search); 
+			var p = e.search.getGeometry().getFirstCoordinate();
+
+            map.getView().animate({ center: p });
+		})
+		//将features添加到搜索控件中
+		searchCtrl.setSource(dataSource);
+		map.addControl(searchCtrl);
+		//feature图层加入map
+		var dataVector=new ol.layer.Vector({
+			source:dataSource				
+		})
+		map.addLayer(dataVector)
+		
+		
+		//注册右键菜单弹窗对象
+		var menuoverlay=new ol.Overlay({
+			element: document.getElementById("contextmenu_container"),
+			positioning: 'center-center',
+		});
+		map.addOverlay(menuoverlay);
+		//地图注册右键事件
+		map.on("contextmenu",function (evt){
+			evt.preventDefault();
+			var coordinate = evt.coordinate;
+			//console.log(document.getElementsByClassName("contextmenu"))
+			document.getElementsByClassName("contextmenu")[0].style.display="block";
+			document.getElementById("contextmenu_container").style.display = "block";
+			 var feature = map.forEachFeatureAtPixel(evt.pixel,function (feature) {
+				return feature;
+			});
+			if(feature){
+				document.getElementById("feature").style.display="block";
+				document.getElementById("new").style.display="none";
+				console.log(feature);
+				clickedfeature=feature;
+			}
+			else{
+				document.getElementById("feature").style.display="none";
+				document.getElementById("new").style.display="block";
+				console.log(coordinate)
+				//console.log(ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326'))
+				pointcoordinate=coordinate
+			}
+			menuoverlay.setPosition(coordinate)
+		})
+		//点击隐藏右键菜单
+		map.on("click",function(e){
+			e.preventDefault();
+            menuoverlay.setPosition(undefined);
+		})
+		//加载数据
+		//loadFeatures([{ID:1,Name:"数据1",Lng:"106.53097",Lat:"29.55743"},{ID:2,Name:"数据2",Lng:"106.63097",Lat:"29.55743"}])
+		var data=[{ID:1,Name:"数据1",Lng:"106.53097",Lat:"29.55743"},{ID:2,Name:"数据2",Lng:"106.63097",Lat:"29.55743"}]
+		for(var i=0;i<data.length;i++){
+			var point=data[i]
+			var feature=loadFeature(point.ID,point.Name,point.Lng,point.Lat)
+			//添加单个feature
+			dataSource.addFeature(feature)
+		}
+		//刷新所有features
+		//refreshFeatures();
+		//清除所有features
+		 setTimeout(function () { 
+			 clearFeatures(); 
+		 }, 1000); 
+		
+		
+		
+		
+		//新增函数
+		function formNew(){
+			console.log(pointcoordinate)
+			document.getElementById("contextmenu_container").style.display = "none";
+			window.location = 'csharpmethod://jsCall?method=new&coord=' + pointcoordinate;
+		}
+
+		//查看
+		function formView(){
+			console.log(clickedfeature.get("ID"))
+			document.getElementById("contextmenu_container").style.display = "none";
+			window.location = 'csharpmethod://jsCall?method=view&ID=' + clickedfeature.get("ID")+'&Name='+clickedfeature.get("Label");
+		}
+
+		//编辑
+		function formEdit(){
+			console.log(clickedfeature.get("ID"))
+			document.getElementById("contextmenu_container").style.display = "none";
+			window.location = 'csharpmethod://jsCall?method=edit&ID=' + clickedfeature.get("ID")+'&Name='+clickedfeature.get("Label");
+		}
+
+		//删除
+		function formDelete(){
+			console.log(clickedfeature.get("ID"))
+			removeFeature();
+			document.getElementById("contextmenu_container").style.display = "none";
+			window.location = 'csharpmethod://jsCall?method=delete&ID=' + clickedfeature.get("ID")+'&Name='+clickedfeature.get("Label");
+		}
+
+		function setFeatureStyle(label){
+			var iconStyle=new ol.style.Style({
+				image:new ol.style.Icon({
+					scale:0.3,
+					anchor:[0.5,0.5],
+					src:'https://openlayers.org/en/v4.6.5/examples/data/icon.png',
+				}),
+				text:new ol.style.Text({
+					textAlign: 'center',            //位置
+					textBaseline: 'top',         //基准线
+					offsetY: 12,
+					font: 'bold 12px 宋体',    //文字样式
+					text: `${label}`,      //文本内容
+					fill: new ol.style.Fill({       //文本填充样式（即文字颜色)
+						color: '#00f'
+					}),
+					stroke: new ol.style.Stroke({
+						color: '#fff',
+						width: 2
+					})
+				})
+			})
+			return iconStyle;
+		}
+		//加载所有标记点
+		function loadFeatures(points){
+			var features=[];
+			for(var i=0;i<points.length;i++){
+				var point=points[i];
+				var feature=loadFeature(point.ID,point.Name,point.Lng,point.Lat)
+			}
+			refreshFeatures();
+		};
+		
+		//添加单个 Feature
+		function loadFeature(ID, Name, Lng, Lat){
+			//创建feature
+			var feature=new ol.Feature({
+				Label:Name,
+				ID:ID,
+				geometry: new ol.geom.Point([Lng,Lat])
+			})
+			feature.setStyle(setFeatureStyle(Name))
+			features.push(feature);
+			return feature;
+		};		
+		
+		//清空 所有 Features
+		function clearFeatures()
+		{
+			dataSource.clear();
+		};
+		//删除单个feature
+		function removeFeature(){
+			dataSource.removeFeature(clickedfeature);
+			var index=features.indexOf(clickedfeature)
+			if(index>-1){
+				features.splice(index,1)
+			}
+		};
+		//更新地图上的features
+		function refreshFeatures(){
+            dataSource.clear();
+			dataSource.addFeatures(features);
+		}
+    </script>
+  </body>
+</html>
+</html>
