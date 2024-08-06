@@ -40,7 +40,7 @@
             layers: [
                 new ol.layer.Tile({
                     source: new ol.source.XYZ({
-                       	 url:"http://t0.tianditu.gov.cn/img_w/wmts?" +
+                        url:"http://t0.tianditu.gov.cn/img_w/wmts?" +
 				            "SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles" +
 				            "&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=b0e8f957a1c5a8794a3f74e2ed5e502a",
                         extent:[30, 0, 180, 90],
@@ -97,17 +97,16 @@
         });
         map.addLayer(layer);
         // 点击地图添加点
-        map.on('click', function (evt) {
-            const point = new ol.Feature({
-                geometry: new ol.geom.Point(evt.coordinate)
+        map.on('click', function (event) {
+            const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
+                return feature;
             });
-            source.addFeature(point);
-            const view = map.getView();
-            view.animate({
-                center: evt.coordinate,
-                duration: 300
-            });
+            const coord = event.coordinate;
+            const lat = ol.proj.toLonLat(coord)[1];
+            const lon = ol.proj.toLonLat(coord)[0];
+            window.parent.postMessage({lat: lat, lon: lon}, '*');//向父页面发送消息
         });
+
         const btn = document.querySelector('.btn')
         btn.onclick = function(){
             map.getView().setCenter(ol.proj.fromLonLat([114.30, 30.50]))
