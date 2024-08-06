@@ -22,18 +22,10 @@
             margin: 10px;
             border-radius: 4px;
         }
-        .btn{
-            position: fixed;
-            top: 10px;
-            right: 50px;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <button class="btn">复位地图</button>
-    <div id="mouse-position" class="mouse-position"></div>
     <script type="text/javascript">
         const map = new ol.Map({
             target: 'map', // 地图容器的ID
@@ -63,12 +55,6 @@
         const fullScreen = new ol.control.FullScreen()
         map.addControl(fullScreen)
         // 添加鼠标位置控件
-        const mousePosition = new ol.control.MousePosition({
-            coordinateFormat: ol.coordinate.createStringXY(4),//坐标格式
-            projection: 'EPSG:4326',//地图投影坐标系
-            target: document.getElementById('mouse-position'),//要素的div
-            undefinedHTML: '&nbsp;'
-        });
         const point = new ol.Feature({
             geometry: new ol.geom.Point(ol.proj.fromLonLat([114.30, 30.50]))
         });
@@ -98,21 +84,14 @@
         map.addLayer(layer);
         // 点击地图添加点
         map.on('click', function (event) {
-            const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
+            var feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
                 return feature;
             });
-            const coord = event.coordinate;
-            const lat = ol.proj.toLonLat(coord)[1];
-            const lon = ol.proj.toLonLat(coord)[0];
+            var coord = event.coordinate;
+            var lat = ol.proj.toLonLat(coord)[1];
+            var lon = ol.proj.toLonLat(coord)[0];
             window.parent.postMessage({lat: lat, lon: lon}, '*');//向父页面发送消息
         });
-
-        const btn = document.querySelector('.btn')
-        btn.onclick = function(){
-            map.getView().setCenter(ol.proj.fromLonLat([114.30, 30.50]))
-            map.getView().setZoom(5)
-            source.clear()//清除所有的要素
-        }
     </script>
 </body>
 </html>
