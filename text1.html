@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>地图</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .mouse-position {
+            background-color: rgba(0,60,136,.7);
+            color: white;
+            padding: 4px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            margin: 10px;
+            border-radius: 4px;
+        }
+        .btn{
+            position: fixed;
+            top: 10px;
+            right: 50px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button class="btn">复位地图</button>
+    <div id="mouse-position" class="mouse-position"></div>
+    <script type="text/javascript">
+        const map = new ol.Map({
+            target: 'map', // 地图容器的ID
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: 'http://t0.tianditu.com/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=172d76ed8e929f9ae07f8a98e989fd95',
+                        extent:[30, 0, 180, 90],
+			            wrapX: true // 替换为您的天地图密钥
+                    })
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([114.30, 30.50]), // 地图中心点坐标
+                zoom: 5 ,// 初始缩放级别
+                projection:'EPSG:3857'
+            })
+        });     
+        const ZoomToExtent = new ol.control.ZoomToExtent({
+            //这是 OpenLayers 中的一个函数，用于将一个地理范围从一个坐标投影系统转换到另一个投影系统。
+            extent: ol.proj.transformExtent([110, 30, 160, 30], 'EPSG:4326', 'EPSG:3857')
+
+        });
+        map.addControl(ZoomToExtent);
+        const fullScreen = new ol.control.FullScreen()
+        map.addControl(fullScreen)
+        // 添加鼠标位置控件
+        const mousePosition = new ol.control.MousePosition({
+            coordinateFormat: ol.coordinate.createStringXY(4),//坐标格式
+            projection: 'EPSG:4326',//地图投影坐标系
+            target: document.getElementById('mouse-position'),//要素的div
+            undefinedHTML: '&nbsp;'
+        });
+        const point = new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([114.30, 30.50]))
+        });
+        let style_point = new ol.style.Style({
+            image: new ol.style.Circle({//点的样式
+                radius: 20,
+                fill: new ol.style.Fill({//矢量图层填充颜色，以及透明度
+                    color: 'red'
+                }),
+                stroke: new ol.style.Stroke({//边界样式
+                    color: 'black',
+                    width: 1
+                })
+            })
+        });
+        point.setStyle(style_point);
+        map.addLayer(new ol.layer.Vector({//矢量图层
+            source: new ol.source.Vector({
+                features: [point]//矢量要素
+            })
+        }));
+        map.addControl(mousePosition);
+        const source = new ol.source.Vector();
+        const layer = new ol.layer.Vector({
+            source: source
+        });
+        map.addLayer(layer);
+        // 点击地图添加点
+        map.on('click', function (evt) {
+            const point = new ol.Feature({
+                geometry: new ol.geom.Point(evt.coordinate)
+            });
+            source.addFeature(point);
+            const view = map.getView();
+            view.animate({
+                center: evt.coordinate,
+                duration: 300
+            });
+        });
+        const btn = document.querySelector('.btn')
+        btn.onclick = function(){
+            map.getView().setCenter(ol.proj.fromLonLat([114.30, 30.50]))
+            map.getView().setZoom(5)
+            source.clear()//清除所有的要素
+        }
+    </script>
+</body>
+</html>
