@@ -90,7 +90,12 @@
             var coord = event.coordinate;
             var lat = ol.proj.toLonLat(coord)[1];
             var lon = ol.proj.toLonLat(coord)[0];
-            window.parent.postMessage({lat: lat, lon: lon}, '*');//向父页面发送消息
+            window.parent.postMessage({
+				data:{
+					lat:lat,
+					lon:lon
+				}
+			});//向父页面发送消息
         });
     </script>
 </body>
