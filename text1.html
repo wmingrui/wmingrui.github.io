@@ -40,7 +40,9 @@
             layers: [
                 new ol.layer.Tile({
                     source: new ol.source.XYZ({
-                        url: 'http://t0.tianditu.com/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=172d76ed8e929f9ae07f8a98e989fd95',
+                       	 url:"http://t0.tianditu.gov.cn/img_w/wmts?" +
+				            "SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles" +
+				            "&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=b0e8f957a1c5a8794a3f74e2ed5e502a",
                         extent:[30, 0, 180, 90],
 			            wrapX: true // 替换为您的天地图密钥
                     })
